@@ -1,6 +1,6 @@
 {
   "name": "async-iterable",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An iterator abstraction for async operations",
   "keywords": [
     "iterable",
@@ -16,11 +16,13 @@
     "build": "node_modules/.bin/babel src -d build --source-maps",
     "lint": "node node_modules/eslint/bin/eslint.js -c .eslintrc --ignore-path .eslintignore --quiet ./src",
     "flow": "node_modules/.bin/flow ./src",
+    "build-dot-flow": "find ./src -name '*.js' -not -path '*/tests*' | while read filepath; do cp $filepath `echo $filepath | sed 's/\\/src\\//\\/build\\//g'`.flow; done",
     "runtest": "node_modules/.bin/mocha --require source-map-support/register --recursive \"build/**/*.test.js\"",
     "test": "npm run build && npm run runtest",
     "prep": "npm run flow && npm run lint && npm run test",
     "npmpublish": "npm run prep && npm publish",
-    "git-amend": "git add . && git commit --amend --no-edit && git push -f"
+    "git-amend": "git add . && git commit --amend --no-edit && git push -f",
+    "install": "npm run build-dot-flow"
   },
   "author": "Vadim Zak <vadimzak@gmail.com>",
   "license": "MIT",

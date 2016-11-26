@@ -1,6 +1,7 @@
 //@flow
 
 import Queue from './Queue'
+import { asyncIterableForEach } from './asyncUtils'
 
 /***************************************/
 
@@ -17,37 +18,36 @@ class IterationError {
 export class AsyncIterableBase<T, B> {
   static brkObj = Symbol('brkObj')
 
-  async toArray(): Array<B> {
-    let array = []
-    for await (let item of this) {
-      array.push(item)
-    }
-    return array
+  async forEach<Symbol>(asyncFunc: (item: B, i: number, brkObj: Symbol) => Promise<Symbol>): Promise<void> {
+    await asyncIterableForEach(this, asyncFunc)
   }
 
-  async forEach<Symbol>(asyncFunc: (B, number, Symbol) => Symbol): Promise<void> {
-    let i = 0
-    for await (let item of this) {
-      let ret = await asyncFunc(item, i++, AsyncIterableBase.brkObj)
-      if (ret === AsyncIterableBase.brkObj)
-        break
-    }
+  async toArray(): Promise<Array<B>> {
+    let array = []
+    await this.forEach(async (item) => {
+      array.push(item)
+    })
+    return array
   }
 
   get size(): ?number {
     return undefined
   }
 
-  map<C>(transformFunc: (B) => C): MapAsyncIterable<T, C> {
+  map<C>(transformFunc: (item: B) => C): MapAsyncIterable<T, C> {
     return new MapAsyncIterable(this, transformFunc)
   }
 
-  filter(filterFunc: (T) => boolean): FilterAsyncIterable<T> {
+  filter(filterFunc: (item: T) => boolean): FilterAsyncIterable<T> {
     return new FilterAsyncIterable(this, filterFunc)
   }
 
   take(maxItems: number): TakeAsyncIterable<T> {
     return new TakeAsyncIterable(this, maxItems)
+  }
+
+  [Symbol.asyncIterator](): AsyncIteratorBase<T, B> {
+    throw new Error('This function must be overridden by derived classes')
   }
 }
 
@@ -105,10 +105,14 @@ class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
   }
 
   _start = async () => {
-    for (let value of this._asyncIterable._innerIterable) {
-      await this._queue.push(value)
+    try {
+      for (let value of this._asyncIterable._innerIterable) {
+        await this._queue.push(value)
+      }
+      this._queue.close()
+    } catch(err) {
+      console.error(`Error during processing QueuedAsyncIterator items`, err) 
     }
-    this._queue.close()
   }
 }
 
@@ -178,9 +182,9 @@ class TakeAsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
 class MapAsyncIterable<T, B> extends AsyncIterableBase<T, B> {
   _innerAsyncIterable: AsyncIterableBase<T, T>
-  _transformFunc: (T) => B
+  _transformFunc: (item: T) => B
 
-  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, transformFunc: (T) => B) {
+  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, transformFunc: (item: T) => B) {
     super()
     this._innerAsyncIterable = innerAsyncIterable
     this._transformFunc = transformFunc
@@ -220,9 +224,9 @@ class MapAsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
 
 class FilterAsyncIterable<T> extends AsyncIterableBase<T, T> {
   _innerAsyncIterable: AsyncIterableBase<T, T>
-  _filterFunc: (T) => boolean
+  _filterFunc: (item: T) => boolean
 
-  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, filterFunc: (T) => boolean) {
+  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, filterFunc: (item: T) => boolean) {
     super()
     this._innerAsyncIterable = innerAsyncIterable
     this._filterFunc = filterFunc

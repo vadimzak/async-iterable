@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.0.2
+
+- .flow files generation added
+
 ### 1.0.1
 
 - Small bugfix
