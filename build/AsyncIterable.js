@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.StreamIterator = exports.StreamIterable = undefined;
+exports.StreamIterable = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -13,32 +13,23 @@ var _Queue2 = _interopRequireDefault(_Queue);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
 function _asyncIterator(iterable) { if (typeof Symbol === "function") { if (Symbol.asyncIterator) { var method = iterable[Symbol.asyncIterator]; if (method != null) return method.call(iterable); } if (Symbol.iterator) { return iterable[Symbol.iterator](); } } throw new TypeError("Object is not async iterable"); }
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 /***************************************/
 
-var IterationError = function (_Error) {
-  _inherits(IterationError, _Error);
+var IterationError = function IterationError(errorObj) {
+  _classCallCheck(this, IterationError);
 
-  function IterationError(errorObj) {
-    _classCallCheck(this, IterationError);
-
-    var _this = _possibleConstructorReturn(this, (IterationError.__proto__ || Object.getPrototypeOf(IterationError)).call(this));
-
-    _this.errorObj = errorObj;
-    return _this;
-  }
-
-  return IterationError;
-}(Error);
+  this.errorObj = errorObj;
+};
 
 /***************************************/
 
@@ -253,11 +244,6 @@ var AsyncIterableBase = function () {
       return forEach;
     }()
   }, {
-    key: 'size',
-    value: function size() {
-      return undefined;
-    }
-  }, {
     key: 'map',
     value: function map(transformFunc) {
       return new MapAsyncIterable(this, transformFunc);
@@ -271,6 +257,11 @@ var AsyncIterableBase = function () {
     key: 'take',
     value: function take(maxItems) {
       return new TakeAsyncIterable(this, maxItems);
+    }
+  }, {
+    key: 'size',
+    get: function get() {
+      return undefined;
     }
   }]);
 
@@ -318,31 +309,37 @@ var AsyncIteratorBase = function () {
 var AsyncIterable = function (_AsyncIterableBase) {
   _inherits(AsyncIterable, _AsyncIterableBase);
 
+  _createClass(AsyncIterable, null, [{
+    key: 'from',
+    value: function from(innerIterable) {
+      var queueSize = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
+      return new AsyncIterable(innerIterable, queueSize);
+    }
+  }]);
+
   function AsyncIterable(innerIterable) {
-    var asyncItemAwaiterFunction = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function (i) {
-      return i;
-    };
-    var queueSize = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+    var queueSize = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
 
     _classCallCheck(this, AsyncIterable);
 
-    var _this2 = _possibleConstructorReturn(this, (AsyncIterable.__proto__ || Object.getPrototypeOf(AsyncIterable)).call(this));
+    var _this = _possibleConstructorReturn(this, (AsyncIterable.__proto__ || Object.getPrototypeOf(AsyncIterable)).call(this));
 
-    _this2._innerIterable = innerIterable;
-    _this2._asyncItemAwaiterFunction = asyncItemAwaiterFunction;
-    _this2._queueSize = queueSize;
-    return _this2;
+    _this._innerIterable = innerIterable;
+    _this._queueSize = queueSize;
+    return _this;
   }
 
   _createClass(AsyncIterable, [{
-    key: 'size',
-    value: function size() {
-      return typeof this._innerIterable.length === 'undefined' ? this._innerIterable.size : this._innerIterable.length; // if _innerIterable is not a list, undefined will be returned
-    }
-  }, {
     key: Symbol.asyncIterator,
     value: function value() {
+      if (typeof this._innerIterable === 'function') return new StreamIterator(this._innerIterable);
       return this._queueSize ? new QueuedAsyncIterator(this) : new AsyncIterator(this);
+    }
+  }, {
+    key: 'size',
+    get: function get() {
+      return typeof this._innerIterable.length === 'undefined' ? this._innerIterable.size : this._innerIterable.length; // if _innerIterable is not a list, undefined will be returned
     }
   }]);
 
@@ -355,13 +352,13 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
   _inherits(QueuedAsyncIterator, _AsyncIteratorBase);
 
   function QueuedAsyncIterator(asyncIterable) {
-    var _this4 = this;
+    var _this3 = this;
 
     _classCallCheck(this, QueuedAsyncIterator);
 
-    var _this3 = _possibleConstructorReturn(this, (QueuedAsyncIterator.__proto__ || Object.getPrototypeOf(QueuedAsyncIterator)).call(this));
+    var _this2 = _possibleConstructorReturn(this, (QueuedAsyncIterator.__proto__ || Object.getPrototypeOf(QueuedAsyncIterator)).call(this));
 
-    _this3.next = _asyncToGenerator(regeneratorRuntime.mark(function _callee4() {
+    _this2.next = _asyncToGenerator(regeneratorRuntime.mark(function _callee4() {
       var _value3;
 
       return regeneratorRuntime.wrap(function _callee4$(_context4) {
@@ -374,7 +371,7 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
               }
 
               _context4.next = 3;
-              return _this3._queue.pop();
+              return _this2._queue.pop();
 
             case 3:
               _value3 = _context4.sent;
@@ -394,9 +391,9 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
               return _context4.stop();
           }
         }
-      }, _callee4, _this4);
+      }, _callee4, _this3);
     }));
-    _this3._start = _asyncToGenerator(regeneratorRuntime.mark(function _callee5() {
+    _this2._start = _asyncToGenerator(regeneratorRuntime.mark(function _callee5() {
       var _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, internalItem, _value4;
 
       return regeneratorRuntime.wrap(function _callee5$(_context5) {
@@ -407,7 +404,7 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
               _didIteratorError3 = false;
               _iteratorError3 = undefined;
               _context5.prev = 3;
-              _iterator3 = _this3._asyncIterable._innerIterable[Symbol.iterator]();
+              _iterator3 = _this2._asyncIterable._innerIterable[Symbol.iterator]();
 
             case 5:
               if (_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done) {
@@ -417,12 +414,12 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
 
               internalItem = _step3.value;
               _context5.next = 9;
-              return _this3._asyncIterable._asyncItemAwaiterFunction(internalItem);
+              return _this2._asyncIterable._asyncItemAwaiterFunction(internalItem);
 
             case 9:
               _value4 = _context5.sent;
               _context5.next = 12;
-              return _this3._queue.push(_value4);
+              return _this2._queue.push(_value4);
 
             case 12:
               _iteratorNormalCompletion3 = true;
@@ -464,20 +461,20 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
               return _context5.finish(21);
 
             case 29:
-              _this3._queue.close();
+              _this2._queue.close();
 
             case 30:
             case 'end':
               return _context5.stop();
           }
         }
-      }, _callee5, _this4, [[3, 17, 21, 29], [22,, 24, 28]]);
+      }, _callee5, _this3, [[3, 17, 21, 29], [22,, 24, 28]]);
     }));
 
-    _this3._asyncIterable = asyncIterable;
-    _this3._queue = new _Queue2.default({ maxSize: _this3._asyncIterable._queueSize, sleepPeriodMs: 50 });
-    _this3._start();
-    return _this3;
+    _this2._asyncIterable = asyncIterable;
+    _this2._queue = new _Queue2.default({ maxSize: _this2._asyncIterable._queueSize, sleepPeriodMs: 50 });
+    _this2._start();
+    return _this2;
   }
 
   return QueuedAsyncIterator;
@@ -487,19 +484,19 @@ var AsyncIterator = function (_AsyncIteratorBase2) {
   _inherits(AsyncIterator, _AsyncIteratorBase2);
 
   function AsyncIterator(asyncIterable) {
-    var _this6 = this;
+    var _this5 = this;
 
     _classCallCheck(this, AsyncIterator);
 
-    var _this5 = _possibleConstructorReturn(this, (AsyncIterator.__proto__ || Object.getPrototypeOf(AsyncIterator)).call(this));
+    var _this4 = _possibleConstructorReturn(this, (AsyncIterator.__proto__ || Object.getPrototypeOf(AsyncIterator)).call(this));
 
-    _this5.next = _asyncToGenerator(regeneratorRuntime.mark(function _callee6() {
-      var next, value;
+    _this4.next = _asyncToGenerator(regeneratorRuntime.mark(function _callee6() {
+      var next;
       return regeneratorRuntime.wrap(function _callee6$(_context6) {
         while (1) {
           switch (_context6.prev = _context6.next) {
             case 0:
-              next = _this5._innerIterator.next();
+              next = _this4._innerIterator.next();
 
               if (!next.done) {
                 _context6.next = 3;
@@ -509,24 +506,19 @@ var AsyncIterator = function (_AsyncIteratorBase2) {
               return _context6.abrupt('return', { done: true });
 
             case 3:
-              _context6.next = 5;
-              return _this5._asyncIterable._asyncItemAwaiterFunction(next.value);
+              return _context6.abrupt('return', { done: false, value: next.value });
 
-            case 5:
-              value = _context6.sent;
-              return _context6.abrupt('return', { done: false, value: value });
-
-            case 7:
+            case 4:
             case 'end':
               return _context6.stop();
           }
         }
-      }, _callee6, _this6);
+      }, _callee6, _this5);
     }));
 
-    _this5._asyncIterable = asyncIterable;
-    _this5._innerIterator = _this5._asyncIterable._innerIterable[Symbol.iterator]();
-    return _this5;
+    _this4._asyncIterable = asyncIterable;
+    _this4._innerIterator = _this4._asyncIterable._innerIterable[Symbol.iterator]();
+    return _this4;
   }
 
   return AsyncIterator;
@@ -540,11 +532,11 @@ var TakeAsyncIterable = function (_AsyncIterableBase2) {
   function TakeAsyncIterable(innerAsyncIterable, maxItems) {
     _classCallCheck(this, TakeAsyncIterable);
 
-    var _this7 = _possibleConstructorReturn(this, (TakeAsyncIterable.__proto__ || Object.getPrototypeOf(TakeAsyncIterable)).call(this));
+    var _this6 = _possibleConstructorReturn(this, (TakeAsyncIterable.__proto__ || Object.getPrototypeOf(TakeAsyncIterable)).call(this));
 
-    _this7._innerAsyncIterable = innerAsyncIterable;
-    _this7._maxItems = maxItems;
-    return _this7;
+    _this6._innerAsyncIterable = innerAsyncIterable;
+    _this6._maxItems = maxItems;
+    return _this6;
   }
 
   _createClass(TakeAsyncIterable, [{
@@ -554,8 +546,8 @@ var TakeAsyncIterable = function (_AsyncIterableBase2) {
     }
   }, {
     key: 'size',
-    value: function size() {
-      var innerSize = this._innerAsyncIterable.size();
+    get: function get() {
+      var innerSize = this._innerAsyncIterable.size;
       if (innerSize != undefined) {
         return Math.min(innerSize, this._maxItems);
       }
@@ -571,13 +563,13 @@ var TakeAsyncIterator = function (_AsyncIteratorBase3) {
   function TakeAsyncIterator(iterable) {
     _classCallCheck(this, TakeAsyncIterator);
 
-    var _this8 = _possibleConstructorReturn(this, (TakeAsyncIterator.__proto__ || Object.getPrototypeOf(TakeAsyncIterator)).call(this));
+    var _this7 = _possibleConstructorReturn(this, (TakeAsyncIterator.__proto__ || Object.getPrototypeOf(TakeAsyncIterator)).call(this));
 
-    _this8._nextIndex = 0;
+    _this7._nextIndex = 0;
 
-    _this8._iterable = iterable;
-    _this8._innerAsyncIterator = _this8._iterable._innerAsyncIterable[Symbol.asyncIterator]();
-    return _this8;
+    _this7._iterable = iterable;
+    _this7._innerAsyncIterator = _this7._iterable._innerAsyncIterable[Symbol.asyncIterator]();
+    return _this7;
   }
 
   _createClass(TakeAsyncIterator, [{
@@ -630,11 +622,11 @@ var MapAsyncIterable = function (_AsyncIterableBase3) {
   function MapAsyncIterable(innerAsyncIterable, transformFunc) {
     _classCallCheck(this, MapAsyncIterable);
 
-    var _this9 = _possibleConstructorReturn(this, (MapAsyncIterable.__proto__ || Object.getPrototypeOf(MapAsyncIterable)).call(this));
+    var _this8 = _possibleConstructorReturn(this, (MapAsyncIterable.__proto__ || Object.getPrototypeOf(MapAsyncIterable)).call(this));
 
-    _this9._innerAsyncIterable = innerAsyncIterable;
-    _this9._transformFunc = transformFunc;
-    return _this9;
+    _this8._innerAsyncIterable = innerAsyncIterable;
+    _this8._transformFunc = transformFunc;
+    return _this8;
   }
 
   _createClass(MapAsyncIterable, [{
@@ -645,7 +637,7 @@ var MapAsyncIterable = function (_AsyncIterableBase3) {
   }, {
     key: 'size',
     value: function size() {
-      return this._innerAsyncIterable.size();
+      return this._innerAsyncIterable.size;
     }
   }]);
 
@@ -658,13 +650,13 @@ var MapAsyncIterator = function (_AsyncIteratorBase4) {
   function MapAsyncIterator(iterable) {
     _classCallCheck(this, MapAsyncIterator);
 
-    var _this10 = _possibleConstructorReturn(this, (MapAsyncIterator.__proto__ || Object.getPrototypeOf(MapAsyncIterator)).call(this));
+    var _this9 = _possibleConstructorReturn(this, (MapAsyncIterator.__proto__ || Object.getPrototypeOf(MapAsyncIterator)).call(this));
 
-    _this10._nextIndex = 0;
+    _this9._nextIndex = 0;
 
-    _this10._iterable = iterable;
-    _this10._innerAsyncIterator = _this10._iterable._innerAsyncIterable[Symbol.asyncIterator]();
-    return _this10;
+    _this9._iterable = iterable;
+    _this9._innerAsyncIterator = _this9._iterable._innerAsyncIterable[Symbol.asyncIterator]();
+    return _this9;
   }
 
   _createClass(MapAsyncIterator, [{
@@ -724,11 +716,11 @@ var FilterAsyncIterable = function (_AsyncIterableBase4) {
   function FilterAsyncIterable(innerAsyncIterable, filterFunc) {
     _classCallCheck(this, FilterAsyncIterable);
 
-    var _this11 = _possibleConstructorReturn(this, (FilterAsyncIterable.__proto__ || Object.getPrototypeOf(FilterAsyncIterable)).call(this));
+    var _this10 = _possibleConstructorReturn(this, (FilterAsyncIterable.__proto__ || Object.getPrototypeOf(FilterAsyncIterable)).call(this));
 
-    _this11._innerAsyncIterable = innerAsyncIterable;
-    _this11._filterFunc = filterFunc;
-    return _this11;
+    _this10._innerAsyncIterable = innerAsyncIterable;
+    _this10._filterFunc = filterFunc;
+    return _this10;
   }
 
   _createClass(FilterAsyncIterable, [{
@@ -747,13 +739,13 @@ var FilterAsyncIterator = function (_AsyncIteratorBase5) {
   function FilterAsyncIterator(iterable) {
     _classCallCheck(this, FilterAsyncIterator);
 
-    var _this12 = _possibleConstructorReturn(this, (FilterAsyncIterator.__proto__ || Object.getPrototypeOf(FilterAsyncIterator)).call(this));
+    var _this11 = _possibleConstructorReturn(this, (FilterAsyncIterator.__proto__ || Object.getPrototypeOf(FilterAsyncIterator)).call(this));
 
-    _this12._nextIndex = 0;
+    _this11._nextIndex = 0;
 
-    _this12._iterable = iterable;
-    _this12._innerAsyncIterator = _this12._iterable._innerAsyncIterable[Symbol.asyncIterator]();
-    return _this12;
+    _this11._iterable = iterable;
+    _this11._innerAsyncIterator = _this11._iterable._innerAsyncIterable[Symbol.asyncIterator]();
+    return _this11;
   }
 
   _createClass(FilterAsyncIterator, [{
@@ -829,98 +821,124 @@ var FilterAsyncIterator = function (_AsyncIteratorBase5) {
 var StreamIterable = exports.StreamIterable = function (_AsyncIterableBase5) {
   _inherits(StreamIterable, _AsyncIterableBase5);
 
-  function StreamIterable(streamFactory, transformer) {
+  function StreamIterable(streamFactory, queueConfig) {
     _classCallCheck(this, StreamIterable);
 
-    var _this13 = _possibleConstructorReturn(this, (StreamIterable.__proto__ || Object.getPrototypeOf(StreamIterable)).call(this));
+    var _this12 = _possibleConstructorReturn(this, (StreamIterable.__proto__ || Object.getPrototypeOf(StreamIterable)).call(this));
 
-    _this13._streamFactory = streamFactory;
-    _this13._transformer = transformer;
-    return _this13;
+    _this12._streamFactory = streamFactory;
+    _this12._queueConfig = queueConfig;
+    return _this12;
   }
 
   _createClass(StreamIterable, [{
     key: Symbol.asyncIterator,
     value: function value() {
-      return new StreamIterator(this._streamFactory(), this);
+      return new StreamIterator(this._streamFactory(), this._queueConfig);
     }
   }]);
 
   return StreamIterable;
 }(AsyncIterableBase);
 
-var StreamIterator = exports.StreamIterator = function (_AsyncIteratorBase6) {
+var StreamIterator = function (_AsyncIteratorBase6) {
   _inherits(StreamIterator, _AsyncIteratorBase6);
 
-  function StreamIterator(stream, streamIterable) {
-    var _this15 = this;
+  function StreamIterator(streamFactory) {
+    var _this14 = this;
+
+    var queueConfig = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : { maxSize: 10000 };
 
     _classCallCheck(this, StreamIterator);
 
-    var _this14 = _possibleConstructorReturn(this, (StreamIterator.__proto__ || Object.getPrototypeOf(StreamIterator)).call(this));
+    var _this13 = _possibleConstructorReturn(this, (StreamIterator.__proto__ || Object.getPrototypeOf(StreamIterator)).call(this));
 
-    _this14._queue = new _Queue2.default({ maxSize: 10000 });
-    _this14._stream = stream;
-    _this14._streamIterable = streamIterable;
+    _this13._queue = new _Queue2.default(queueConfig);
+    _this13._stream = streamFactory();
+
     //let stat = startStat('steram item')
-    _this14._stream.on('data', function () {
+    _this13._stream.on('data', function () {
       var _ref10 = _asyncToGenerator(regeneratorRuntime.mark(function _callee10(item) {
-        var finalItem;
+        var errMsg;
         return regeneratorRuntime.wrap(function _callee10$(_context10) {
           while (1) {
             switch (_context10.prev = _context10.next) {
               case 0:
-                stream.pause();
-                finalItem = _this14._transformer ? _this14._streamIterable._transformer(item) : item;
+                _context10.prev = 0;
+
+                _this13._stream.pause();
                 _context10.next = 4;
-                return _this14._queue.push(finalItem);
+                return _this13._queue.push(item);
 
               case 4:
-                stream.resume();
+                _this13._stream.resume();
                 //stat.inc()
+                _context10.next = 12;
+                break;
 
-              case 5:
+              case 7:
+                _context10.prev = 7;
+                _context10.t0 = _context10['catch'](0);
+                errMsg = 'Error during handling StreamIterator stream data';
+
+                console.error(errMsg, _context10.t0);
+                _this13._queue.push(new IterationError(errMsg + ': ' + _context10.t0.toString()));
+
+              case 12:
               case 'end':
                 return _context10.stop();
             }
           }
-        }, _callee10, _this15);
+        }, _callee10, _this14, [[0, 7]]);
       }));
 
-      return function (_x4) {
+      return function (_x5) {
         return _ref10.apply(this, arguments);
       };
     }());
-    _this14._stream.on('end', function () {
-      _this14._queue.close();
-      //stat.end()
+    _this13._stream.on('end', function () {
+      try {
+        _this13._queue.close();
+        //stat.end()
+      } catch (err) {
+        console.error('Error during handling StreamIterator stream end', err);
+      }
     });
-    _this14._stream.on('error', function () {
+    _this13._stream.on('error', function () {
       var _ref11 = _asyncToGenerator(regeneratorRuntime.mark(function _callee11(errStr) {
         return regeneratorRuntime.wrap(function _callee11$(_context11) {
           while (1) {
             switch (_context11.prev = _context11.next) {
               case 0:
-                _context11.next = 2;
-                return _this14._queue.push(new IterationError(errStr));
-
-              case 2:
-                _this14._queue.close();
-                //stat.end()
+                _context11.prev = 0;
+                _context11.next = 3;
+                return _this13._queue.push(new IterationError(errStr));
 
               case 3:
+                _this13._queue.close();
+                //stat.end()
+                _context11.next = 9;
+                break;
+
+              case 6:
+                _context11.prev = 6;
+                _context11.t0 = _context11['catch'](0);
+
+                console.error('Error during handling StreamIterator stream error', _context11.t0);
+
+              case 9:
               case 'end':
                 return _context11.stop();
             }
           }
-        }, _callee11, _this15);
+        }, _callee11, _this14, [[0, 6]]);
       }));
 
-      return function (_x5) {
+      return function (_x6) {
         return _ref11.apply(this, arguments);
       };
     }());
-    return _this14;
+    return _this13;
   }
 
   _createClass(StreamIterator, [{
@@ -943,7 +961,7 @@ var StreamIterator = exports.StreamIterator = function (_AsyncIteratorBase6) {
                   break;
                 }
 
-                throw value.errorObj;
+                throw value.errorObj instanceof Error ? value.errorObj : new Error(value.errorObj);
 
               case 5:
                 if (!(value === _Queue2.default.empty)) {

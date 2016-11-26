@@ -4,11 +4,10 @@ import Queue from './Queue'
 
 /***************************************/
 
-class IterationError extends Error {
-  errorObj: Object
+class IterationError {
+  errorObj: any
 
-  constructor(errorObj) {
-    super()
+  constructor(errorObj: any) {
     this.errorObj = errorObj
   }
 }
@@ -35,7 +34,7 @@ class AsyncIterableBase<T, B> {
     }
   }
 
-  size(): ?number {
+  get size(): ?number {
     return undefined
   }
 
@@ -60,39 +59,43 @@ class AsyncIteratorBase<T, B> {
 
 /***************************************/
 
-export default class AsyncIterable<T, B> extends AsyncIterableBase<T, B> {
-  _innerIterable: Iterable<T>
-  _asyncItemAwaiterFunction: (T) => Promise<B>
+export default class AsyncIterable<T> extends AsyncIterableBase<T, T> {
+  _innerIterable: Iterable<T> | () => stream$Stream
   _queueSize: number
 
-  constructor(innerIterable: Iterable<T>, asyncItemAwaiterFunction: (T) => Promise<B> = (i) => i, queueSize: number = 0) {
+  static from<T>(innerIterable: Iterable<T> | () => stream$Stream, queueSize: number = 0): AsyncIterable<T> {
+    return new AsyncIterable(innerIterable, queueSize)
+  }
+
+  constructor(innerIterable: Iterable<T> | () => stream$Stream, queueSize: number = 0) {
     super()
     this._innerIterable = innerIterable
-    this._asyncItemAwaiterFunction = asyncItemAwaiterFunction
     this._queueSize = queueSize
   }
 
-  size(): ?number {
+  get size(): ?number {
     return typeof this._innerIterable.length === 'undefined' ? this._innerIterable.size : this._innerIterable.length // if _innerIterable is not a list, undefined will be returned
   }
 
-  [Symbol.asyncIterator](): AsyncIteratorBase<T, B> {
+  [Symbol.asyncIterator](): AsyncIteratorBase<T, T> {
+    if (typeof this._innerIterable === 'function')
+      return new StreamIterator(this._innerIterable)
     return this._queueSize ? new QueuedAsyncIterator(this) : new AsyncIterator(this)
   }
 }
 
-class QueuedAsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
-  _asyncIterable: AsyncIterable<T, B>
-  _queue: Queue<B>
+class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
+  _asyncIterable: AsyncIterable<T>
+  _queue: Queue<T>
 
-  constructor(asyncIterable: AsyncIterable<T, B>) {
+  constructor(asyncIterable: AsyncIterable<T>) {
     super()
     this._asyncIterable = asyncIterable
     this._queue = new Queue({ maxSize: this._asyncIterable._queueSize, sleepPeriodMs: 50 })
     this._start()
   }
 
-  next = async (): Promise<{ done: false, value: B } | { done: true }> => {
+  next = async (): Promise<{ done: false, value: T } | { done: true }> => {
     while (true) {
       let value = await this._queue.pop()
       if (value === Queue.empty)
@@ -110,22 +113,21 @@ class QueuedAsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
   }
 }
 
-class AsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
-  _asyncIterable: AsyncIterable<T, B>
+class AsyncIterator<T> extends AsyncIteratorBase<T, T> {
+  _asyncIterable: AsyncIterable<T>
   _innerIterator: Iterator<T>
 
-  constructor(asyncIterable: AsyncIterable<T, B>) {
+  constructor(asyncIterable: AsyncIterable<T>) {
     super()
     this._asyncIterable = asyncIterable
     this._innerIterator = this._asyncIterable._innerIterable[Symbol.iterator]()
   }
 
-  next = async (): Promise<{ done: false, value: B } | { done: true }> => {
+  next = async (): Promise<{ done: false, value: T } | { done: true }> => {
     let next = this._innerIterator.next()
     if (next.done)
       return { done: true }
-    let value = await this._asyncIterable._asyncItemAwaiterFunction(next.value)
-    return { done: false, value: value }
+    return { done: false, value: next.value }
   }
 }
 
@@ -145,8 +147,8 @@ class TakeAsyncIterable<T> extends AsyncIterableBase<T, T> {
     return new TakeAsyncIterator(this)
   }
 
-  size(): ?number {
-    let innerSize = this._innerAsyncIterable.size()
+  get size(): ?number {
+    let innerSize = this._innerAsyncIterable.size
     if (innerSize != undefined) {
       return Math.min(innerSize, this._maxItems)
     }
@@ -190,7 +192,7 @@ class MapAsyncIterable<T, B> extends AsyncIterableBase<T, B> {
   }
 
   size(): ?number {
-    return this._innerAsyncIterable.size()
+    return this._innerAsyncIterable.size
   }
 }
 
@@ -259,54 +261,68 @@ class FilterAsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
 /***************************************/
 
-export class StreamIterable<T, B> extends AsyncIterableBase<T, B> {
-  _streamFactory: Function
-  _transformer: ?(T) => B
+export class StreamIterable<T, T> extends AsyncIterableBase<T, T> {
+  _streamFactory: () => stream$Stream
+  _queueConfig: Object
 
-  constructor(streamFactory: Function, transformer: ?(T) => B) {
+  constructor(streamFactory: () => stream$Stream, queueConfig: Object) {
     super()
     this._streamFactory = streamFactory
-    this._transformer = transformer
+    this._queueConfig = queueConfig
   }
 
   [Symbol.asyncIterator]() {
-    return new StreamIterator(this._streamFactory(), this)
+    return new StreamIterator(this._streamFactory(), this._queueConfig)
   }
 }
 
-export class StreamIterator<T, B> extends AsyncIteratorBase<T, B> {
-  _queue: Queue<B>
-  _stream: Object
-  _streamIterable: StreamIterable<T, B>
+class StreamIterator<T> extends AsyncIteratorBase<T, T> {
+  _queue: Queue<T>
+  _stream: stream$Stream
 
-  constructor(stream: Object, streamIterable: StreamIterable<T, B>) {
+  constructor(streamFactory: () => stream$Stream, queueConfig: Object = { maxSize: 10000 }) {
     super()
-    this._queue = new Queue({ maxSize: 10000 })
-    this._stream = stream
-    this._streamIterable = streamIterable
+    this._queue = new Queue(queueConfig)
+    this._stream = streamFactory()
+    
     //let stat = startStat('steram item')
     this._stream.on('data', async (item: T) => {
-      stream.pause()
-      let finalItem = this._transformer ? this._streamIterable._transformer(item) : item
-      await this._queue.push(finalItem)
-      stream.resume()
-      //stat.inc()
+      try {
+        this._stream.pause()
+        await this._queue.push(item)
+        this._stream.resume()
+        //stat.inc()
+      } catch (err) {
+        let errMsg = `Error during handling StreamIterator stream data`
+        console.error(errMsg, err) 
+        this._queue.push(new IterationError(`${errMsg}: ${err.toString()}`))
+      }
     })
     this._stream.on('end', () => {
-      this._queue.close()
-      //stat.end()
+      try {
+        this._queue.close()
+        //stat.end()
+      } catch (err) {
+        console.error(`Error during handling StreamIterator stream end`, err) 
+      }
     })
     this._stream.on('error', async (errStr) => {
-      await this._queue.push(new IterationError(errStr))
-      this._queue.close()
-      //stat.end()
+      try {
+        await this._queue.push(new IterationError(errStr))
+        this._queue.close()
+        //stat.end()
+      } catch (err) {
+        console.error(`Error during handling StreamIterator stream error`, err) 
+      }
     })
   }
 
-  async next(): Promise<{ done: false, value: B } | { done: true }> {
+  async next(): Promise<{ done: false, value: T } | { done: true }> {
     let value = await this._queue.pop()
-    if (value instanceof IterationError)
-      throw value.errorObj
+
+    if (value instanceof IterationError) {
+      throw value.errorObj instanceof Error ? value.errorObj : new Error(value.errorObj)
+    }
     if (value === Queue.empty) {
       return { done: true }
     }
