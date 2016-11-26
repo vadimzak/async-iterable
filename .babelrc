@@ -1,0 +1,15 @@
+{
+  "plugins": [
+    "transform-class-properties",
+    "transform-export-extensions",
+    "transform-object-rest-spread",
+    "transform-exponentiation-operator",
+    "transform-es2015-modules-commonjs",
+    "transform-async-generator-functions",
+    "transform-flow-strip-types"
+  ],
+  "presets": [
+    "latest"
+  ],
+  "sourceMaps": "true"
+}
