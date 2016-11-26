@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.StreamIterable = undefined;
+exports.StreamIterable = exports.AsyncIteratorBase = exports.AsyncIterableBase = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -33,7 +33,7 @@ var IterationError = function IterationError(errorObj) {
 
 /***************************************/
 
-var AsyncIterableBase = function () {
+var AsyncIterableBase = exports.AsyncIterableBase = function () {
   function AsyncIterableBase() {
     _classCallCheck(this, AsyncIterableBase);
   }
@@ -270,7 +270,7 @@ var AsyncIterableBase = function () {
 
 AsyncIterableBase.brkObj = Symbol('brkObj');
 
-var AsyncIteratorBase = function () {
+var AsyncIteratorBase = exports.AsyncIteratorBase = function () {
   function AsyncIteratorBase() {
     _classCallCheck(this, AsyncIteratorBase);
   }
@@ -394,7 +394,7 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
       }, _callee4, _this3);
     }));
     _this2._start = _asyncToGenerator(regeneratorRuntime.mark(function _callee5() {
-      var _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, internalItem, _value4;
+      var _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, _value4;
 
       return regeneratorRuntime.wrap(function _callee5$(_context5) {
         while (1) {
@@ -408,67 +408,62 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
 
             case 5:
               if (_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done) {
-                _context5.next = 15;
+                _context5.next = 12;
                 break;
               }
 
-              internalItem = _step3.value;
+              _value4 = _step3.value;
               _context5.next = 9;
-              return _this2._asyncIterable._asyncItemAwaiterFunction(internalItem);
-
-            case 9:
-              _value4 = _context5.sent;
-              _context5.next = 12;
               return _this2._queue.push(_value4);
 
-            case 12:
+            case 9:
               _iteratorNormalCompletion3 = true;
               _context5.next = 5;
               break;
 
-            case 15:
-              _context5.next = 21;
+            case 12:
+              _context5.next = 18;
               break;
 
-            case 17:
-              _context5.prev = 17;
+            case 14:
+              _context5.prev = 14;
               _context5.t0 = _context5['catch'](3);
               _didIteratorError3 = true;
               _iteratorError3 = _context5.t0;
 
-            case 21:
-              _context5.prev = 21;
-              _context5.prev = 22;
+            case 18:
+              _context5.prev = 18;
+              _context5.prev = 19;
 
               if (!_iteratorNormalCompletion3 && _iterator3.return) {
                 _iterator3.return();
               }
 
-            case 24:
-              _context5.prev = 24;
+            case 21:
+              _context5.prev = 21;
 
               if (!_didIteratorError3) {
-                _context5.next = 27;
+                _context5.next = 24;
                 break;
               }
 
               throw _iteratorError3;
 
-            case 27:
-              return _context5.finish(24);
-
-            case 28:
+            case 24:
               return _context5.finish(21);
 
-            case 29:
+            case 25:
+              return _context5.finish(18);
+
+            case 26:
               _this2._queue.close();
 
-            case 30:
+            case 27:
             case 'end':
               return _context5.stop();
           }
         }
-      }, _callee5, _this3, [[3, 17, 21, 29], [22,, 24, 28]]);
+      }, _callee5, _this3, [[3, 14, 18, 26], [19,, 21, 25]]);
     }));
 
     _this2._asyncIterable = asyncIterable;

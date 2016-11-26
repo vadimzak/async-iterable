@@ -34,7 +34,7 @@ export default class Queue<T> {
     this.items.push(newItem)
   }
 
-  pop = async (): Promise<T> | Promise<Symbol> => {
+  pop = async (): Promise<T | Symbol> => {
     // wait if queue is empty
     while (this.items.length === 0) {
       if (this.closed) {

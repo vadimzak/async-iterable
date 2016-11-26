@@ -14,7 +14,7 @@ class IterationError {
 
 /***************************************/
 
-class AsyncIterableBase<T, B> {
+export class AsyncIterableBase<T, B> {
   static brkObj = Symbol('brkObj')
 
   async toArray(): Array<B> {
@@ -51,7 +51,7 @@ class AsyncIterableBase<T, B> {
   }
 }
 
-class AsyncIteratorBase<T, B> {
+export class AsyncIteratorBase<T, B> {
   async next(): Promise<{ done: false, value: B } | { done: true }> {
     throw new Error('This function must be overridden by derived classes')
   }
@@ -105,8 +105,7 @@ class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
   }
 
   _start = async () => {
-    for (let internalItem of this._asyncIterable._innerIterable) {
-      let value = await this._asyncIterable._asyncItemAwaiterFunction(internalItem)
+    for (let value of this._asyncIterable._innerIterable) {
       await this._queue.push(value)
     }
     this._queue.close()
