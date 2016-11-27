@@ -18,15 +18,13 @@ class IterationError {
 export class AsyncIterableBase<T, B> {
   static brkObj = Symbol('brkObj')
 
-  async forEach<Symbol>(asyncFunc: (item: B, i: number, brkObj: Symbol) => Promise<Symbol>): Promise<void> {
+  async forEach(asyncFunc: (item: B, i: number, brkObj: Symbol) => Promise<Symbol>): Promise<void> {
     await asyncIterableForEach(this, asyncFunc)
   }
 
   async toArray(): Promise<Array<B>> {
-    let array = []
-    await this.forEach(async (item) => {
-      array.push(item)
-    })
+    let array: Array<B> = []
+    await this.forEach(async (item) => { array.push(item) })    
     return array
   }
 
@@ -194,7 +192,7 @@ class MapAsyncIterable<T, B> extends AsyncIterableBase<T, B> {
     return new MapAsyncIterator(this)
   }
 
-  size(): ?number {
+  get size(): ?number {
     return this._innerAsyncIterable.size
   }
 }

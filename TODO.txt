@@ -1,2 +1,4 @@
 - Fill README.md
-- Expose .flow definitions
+
+- Add travis ci
+- Add badges
