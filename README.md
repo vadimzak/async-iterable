@@ -42,3 +42,25 @@ await repoNamesEndingWithJsAsyncIterable.forEach((name) => {
 })
  
 ```
+
+## Usage (ES6 + modules + async/await + babel-plugin-transform-async-generator-functions)
+
+AsyncIterable is also iterable via the new tc39 async-iteration proposal syntex
+(for now, the babel plugin 'babel-plugin-transform-async-generator-functions' is required to support this syntex)
+
+```javascript
+import AsyncIterable from 'async-iterable'
+
+// Create the AsyncIterable.
+let repoNamesEndingWithJsAsyncIterable = new AsyncIterable([1, 2, 3])
+  .map(async (n) => {
+    let res = await axios.get(`https://api.github.com/repositories?since=${n}`)
+    return res.data[0].name
+  })
+
+// Iterate the AsyncIterator using the tc39 async-iteration proposal syntex
+for await (const name of repoNamesEndingWithJsAsyncIterable) {
+  console.log(name);
+}
+ 
+```
