@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.0.4
+
+- README.md example added
+
 ### 1.0.3
 
 - Small bugfix

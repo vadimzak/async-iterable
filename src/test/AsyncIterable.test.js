@@ -2,9 +2,11 @@
 
 import "babel-polyfill"
 import { Readable } from 'stream'
+import axios from 'axios'
 //import fs from 'fs'
 
 import AsyncIterable from '../AsyncIterable'
+import { sleep } from '../asyncUtils'
 import { expect } from 'chai'
 
 // mocha flow type declarations

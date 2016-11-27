@@ -4,9 +4,15 @@ require('babel-polyfill');
 
 var _stream = require('stream');
 
+var _axios = require('axios');
+
+var _axios2 = _interopRequireDefault(_axios);
+
 var _AsyncIterable = require('../AsyncIterable');
 
 var _AsyncIterable2 = _interopRequireDefault(_AsyncIterable);
+
+var _asyncUtils = require('../asyncUtils');
 
 var _chai = require('chai');
 

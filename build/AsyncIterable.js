@@ -83,7 +83,6 @@ var AsyncIterableBase = exports.AsyncIterableBase = function () {
                         switch (_context2.prev = _context2.next) {
                           case 0:
                             array.push(item);
-
                           case 1:
                           case 'end':
                             return _context2.stop();
@@ -516,7 +515,7 @@ var MapAsyncIterable = function (_AsyncIterableBase3) {
     }
   }, {
     key: 'size',
-    value: function size() {
+    get: function get() {
       return this._innerAsyncIterable.size;
     }
   }]);
