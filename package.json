@@ -1,6 +1,6 @@
 {
   "name": "async-iterable",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "An iterator abstraction for async operations",
   "keywords": [
     "iterable",

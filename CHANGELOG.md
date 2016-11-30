@@ -1,5 +1,9 @@
 # Changelog
 
+### 1.0.6
+
+- small annotation and bugfixes
+
 ### 1.0.5
 
 - tc39 README.md example added

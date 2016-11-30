@@ -1,5 +1,7 @@
 //@flow
 
+import 'babel-polyfill'
+
 import { sleep } from './asyncUtils'
 
 const DEFAULT_MAX_QUEUE_SIZE = -1
@@ -34,11 +36,11 @@ export default class Queue<T> {
     this.items.push(newItem)
   }
 
-  pop = async (): Promise<T | Symbol> => {
+  pop = async (): Promise<T> => {
     // wait if queue is empty
     while (this.items.length === 0) {
       if (this.closed) {
-        return Queue.empty
+        return ((Queue.empty: any): T)
       }
       this.blockingCount++
       await sleep(this.config.sleepPeriodMs)

@@ -1,7 +1,27 @@
 //@flow
 
+import 'babel-polyfill'
+
 import Queue from './Queue'
 import { asyncIterableForEach } from './asyncUtils'
+
+/***************************************/
+
+export interface IAsyncIterable<TDest> {
+  forEach(asyncFunc: (item: TDest, i: number, brkObj: Symbol) => Promise<Symbol>): Promise<void>;
+
+  toArray(): Promise<Array<TDest>>;
+
+  map<C>(transformFunc: (item: TDest) => C): MapAsyncIterable<TDest, C>;
+
+  filter(filterFunc: (item: TDest) => boolean): FilterAsyncIterable<TDest>;
+
+  take(maxItems: number): TakeAsyncIterable<TDest>;
+
+  //[Symbol.asyncIterator](): AsyncIteratorBase<TDest>;
+
+  size: ?number;  
+}
 
 /***************************************/
 
@@ -15,15 +35,15 @@ class IterationError {
 
 /***************************************/
 
-export class AsyncIterableBase<T, B> {
+export class AsyncIterableBase<TDest> {
   static brkObj = Symbol('brkObj')
 
-  async forEach(asyncFunc: (item: B, i: number, brkObj: Symbol) => Promise<Symbol>): Promise<void> {
+  async forEach<S>(asyncFunc: (item: TDest, i: number, brkObj: Symbol) => ?Symbol | Promise<?Symbol>): Promise<void> {
     await asyncIterableForEach(this, asyncFunc)
   }
 
-  async toArray(): Promise<Array<B>> {
-    let array: Array<B> = []
+  async toArray(): Promise<Array<TDest>> {
+    let array: Array<TDest> = []
     await this.forEach(async (item) => { array.push(item) })    
     return array
   }
@@ -32,71 +52,76 @@ export class AsyncIterableBase<T, B> {
     return undefined
   }
 
-  map<C>(transformFunc: (item: B) => C): MapAsyncIterable<T, C> {
+  map<C>(transformFunc: (item: TDest) => C): MapAsyncIterable<C, TDest> {
     return new MapAsyncIterable(this, transformFunc)
   }
 
-  filter(filterFunc: (item: T) => boolean): FilterAsyncIterable<T> {
+  filter(filterFunc: (item: TDest) => boolean): FilterAsyncIterable<TDest> {
     return new FilterAsyncIterable(this, filterFunc)
   }
 
-  take(maxItems: number): TakeAsyncIterable<T> {
+  take(maxItems: number): TakeAsyncIterable<TDest> {
     return new TakeAsyncIterable(this, maxItems)
   }
 
-  [Symbol.asyncIterator](): AsyncIteratorBase<T, B> {
+  // $FlowIgnore
+  [Symbol.asyncIterator](): AsyncIteratorBase<TDest> {
     throw new Error('This function must be overridden by derived classes')
   }
 }
 
-export class AsyncIteratorBase<T, B> {
-  async next(): Promise<{ done: false, value: B } | { done: true }> {
+export class AsyncIteratorBase<TDest> {
+  async next(): Promise<{ done: false, value: TDest } | { done: true }> {
     throw new Error('This function must be overridden by derived classes')
   }
 }
 
 /***************************************/
 
-export default class AsyncIterable<T> extends AsyncIterableBase<T, T> {
-  _innerIterable: Iterable<T> | () => stream$Stream
+export default class AsyncIterable<TDest> extends AsyncIterableBase<TDest> {
+  _innerIterable: Iterable<TDest> | () => stream$Stream
   _queueSize: number
 
-  static from<T>(innerIterable: Iterable<T> | () => stream$Stream, queueSize: number = 0): AsyncIterable<T> {
+  static from<TDest>(innerIterable: Iterable<TDest> | () => stream$Stream, queueSize: number = 0): AsyncIterable<TDest> {
     return new AsyncIterable(innerIterable, queueSize)
   }
 
-  constructor(innerIterable: Iterable<T> | () => stream$Stream, queueSize: number = 0) {
+  constructor(innerIterable: Iterable<TDest> | () => stream$Stream, queueSize: number = 0) {
     super()
     this._innerIterable = innerIterable
     this._queueSize = queueSize
   }
 
   get size(): ?number {
+    // $FlowIgnore
     return typeof this._innerIterable.length === 'undefined' ? this._innerIterable.size : this._innerIterable.length // if _innerIterable is not a list, undefined will be returned
   }
 
-  [Symbol.asyncIterator](): AsyncIteratorBase<T, T> {
-    if (typeof this._innerIterable === 'function')
-      return new StreamIterator(this._innerIterable)
+  // $FlowIgnore
+  [Symbol.asyncIterator](): AsyncIteratorBase<TDest> {
+    if (typeof this._innerIterable === 'function') {
+      let streamFactory: () => stream$Stream = (this._innerIterable: any)
+      return new StreamIterator(streamFactory)
+    }
     return this._queueSize ? new QueuedAsyncIterator(this) : new AsyncIterator(this)
   }
 }
 
-class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
-  _asyncIterable: AsyncIterable<T>
-  _queue: Queue<T>
+class QueuedAsyncIterator<TDest> extends AsyncIteratorBase<TDest> {
+  _asyncIterable: AsyncIterable<TDest>
+  _queue: Queue<TDest>
 
-  constructor(asyncIterable: AsyncIterable<T>) {
+  constructor(asyncIterable: AsyncIterable<TDest>) {
     super()
     this._asyncIterable = asyncIterable
     this._queue = new Queue({ maxSize: this._asyncIterable._queueSize, sleepPeriodMs: 50 })
     this._start()
   }
 
-  next = async (): Promise<{ done: false, value: T } | { done: true }> => {
+  next = async (): Promise<{ done: true } | { done: false, value: TDest }> => {
     while (true) {
       let value = await this._queue.pop()
-      if (value === Queue.empty)
+      if (value === (Queue.empty: Symbol))
         return { done: true }
       return { done: false, value: value }
     }
@@ -104,7 +129,8 @@ class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
   _start = async () => {
     try {
-      for (let value of this._asyncIterable._innerIterable) {
+      let iterable: Iterable<TDest> = this._asyncIterable._innerIterable
+      for (let value of iterable) {
         await this._queue.push(value)
       }
       this._queue.close()
@@ -114,17 +140,18 @@ class QueuedAsyncIterator<T> extends AsyncIteratorBase<T, T> {
   }
 }
 
-class AsyncIterator<T> extends AsyncIteratorBase<T, T> {
-  _asyncIterable: AsyncIterable<T>
-  _innerIterator: Iterator<T>
+class AsyncIterator<TDest> extends AsyncIteratorBase<TDest> {
+  _asyncIterable: AsyncIterable<TDest>
+  _innerIterator: Iterator<TDest>
 
-  constructor(asyncIterable: AsyncIterable<T>) {
+  constructor(asyncIterable: AsyncIterable<TDest>) {
     super()
     this._asyncIterable = asyncIterable
+    // $FlowIgnore
     this._innerIterator = this._asyncIterable._innerIterable[Symbol.iterator]()
   }
 
-  next = async (): Promise<{ done: false, value: T } | { done: true }> => {
+  next = async (): Promise<{ done: true } | { done: false, value: TDest }> => {
     let next = this._innerIterator.next()
     if (next.done)
       return { done: true }
@@ -134,17 +161,18 @@ class AsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
 /***************************************/
 
-class TakeAsyncIterable<T> extends AsyncIterableBase<T, T> {
-  _innerAsyncIterable: AsyncIterableBase<T, T>
+class TakeAsyncIterable<TDest> extends AsyncIterableBase<TDest> {
+  _innerAsyncIterable: AsyncIterableBase<TDest>
   _maxItems: number
 
-  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, maxItems: number) {
+  constructor(innerAsyncIterable: AsyncIterableBase<TDest>, maxItems: number) {
     super()
     this._innerAsyncIterable = innerAsyncIterable
     this._maxItems = maxItems
   }
 
-  [Symbol.asyncIterator](): TakeAsyncIterator<T> {
+  // $FlowIgnore
+  [Symbol.asyncIterator](): TakeAsyncIterator<TDest> {
     return new TakeAsyncIterator(this)
   }
 
@@ -156,19 +184,20 @@ class TakeAsyncIterable<T> extends AsyncIterableBase<T, T> {
   }
 }
 
-class TakeAsyncIterator<T> extends AsyncIteratorBase<T, T> {
-  _iterable: TakeAsyncIterable<T>
-  _innerAsyncIterator: AsyncIteratorBase<T, T>
+class TakeAsyncIterator<TDest> extends AsyncIteratorBase<TDest> {
+  _iterable: TakeAsyncIterable<TDest>
+  _innerAsyncIterator: AsyncIteratorBase<TDest>
   _maxItems: number
   _nextIndex = 0
 
-  constructor(iterable: TakeAsyncIterable<T>) {
+  constructor(iterable: TakeAsyncIterable<TDest>) {
     super()
     this._iterable = iterable
+    // $FlowIgnore
     this._innerAsyncIterator = this._iterable._innerAsyncIterable[Symbol.asyncIterator]()
   }
 
-  async next(): Promise<{ done: false, value: T } | { done: true }> {
+  async next(): Promise<{ done: false, value: TDest } | { done: true }> {
     if (this._nextIndex >= this._iterable._maxItems)
       return { done: true }
     this._nextIndex++
@@ -178,17 +207,18 @@ class TakeAsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
 /***************************************/
 
-class MapAsyncIterable<T, B> extends AsyncIterableBase<T, B> {
-  _innerAsyncIterable: AsyncIterableBase<T, T>
-  _transformFunc: (item: T) => B
+class MapAsyncIterable<TDest, TOrigin> extends AsyncIterableBase<TDest> {
+  _innerAsyncIterable: AsyncIterableBase<TOrigin>
+  _transformFunc: (item: TOrigin) => TDest
 
-  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, transformFunc: (item: T) => B) {
+  constructor(innerAsyncIterable: AsyncIterableBase<TOrigin>, transformFunc: (item: TOrigin) => TDest) {
     super()
     this._innerAsyncIterable = innerAsyncIterable
     this._transformFunc = transformFunc
   }
 
-  [Symbol.asyncIterator](): MapAsyncIterator<T, B> {
+  // $FlowIgnore
+  [Symbol.asyncIterator](): MapAsyncIterator<TDest> {
     return new MapAsyncIterator(this)
   }
 
@@ -197,19 +227,20 @@ class MapAsyncIterable<T, B> extends AsyncIterableBase<T, B> {
   }
 }
 
-class MapAsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
-  _iterable: MapAsyncIterable<T, B>
-  _innerAsyncIterator: AsyncIteratorBase<T, T>
+class MapAsyncIterator<TDest, TOrigin> extends AsyncIteratorBase<TDest> {
+  _iterable: MapAsyncIterable<TDest, TOrigin>
+  _innerAsyncIterator: AsyncIteratorBase<TOrigin>
   _maxItems: number
   _nextIndex = 0
 
-  constructor(iterable: MapAsyncIterable<T, B>) {
+  constructor(iterable: MapAsyncIterable<TDest, TOrigin>) {
     super()
     this._iterable = iterable
+    // $FlowIgnore
     this._innerAsyncIterator = this._iterable._innerAsyncIterable[Symbol.asyncIterator]()
   }
 
-  async next(): Promise<{ done: false, value: B } | { done: true }> {
+  async next(): Promise<{ done: false, value: TDest } | { done: true }> {
     let item = await this._innerAsyncIterator.next()
     if (item.done === true)
       return { done: true }
@@ -220,35 +251,37 @@ class MapAsyncIterator<T, B> extends AsyncIteratorBase<T, B> {
 
 /***************************************/
 
-class FilterAsyncIterable<T> extends AsyncIterableBase<T, T> {
-  _innerAsyncIterable: AsyncIterableBase<T, T>
-  _filterFunc: (item: T) => boolean
+class FilterAsyncIterable<TDest> extends AsyncIterableBase<TDest> {
+  _innerAsyncIterable: AsyncIterableBase<TDest>
+  _filterFunc: (item: TDest) => boolean
 
-  constructor(innerAsyncIterable: AsyncIterableBase<T, T>, filterFunc: (item: T) => boolean) {
+  constructor(innerAsyncIterable: AsyncIterableBase<TDest>, filterFunc: (item: TDest) => boolean) {
     super()
     this._innerAsyncIterable = innerAsyncIterable
     this._filterFunc = filterFunc
   }
 
-  [Symbol.asyncIterator](): FilterAsyncIterator<T> {
+  // $FlowIgnore
+  [Symbol.asyncIterator](): FilterAsyncIterator<TDest> {
     return new FilterAsyncIterator(this)
   }
 }
 
-class FilterAsyncIterator<T> extends AsyncIteratorBase<T, T> {
-  _iterable: FilterAsyncIterable<T>
-  _innerAsyncIterator: AsyncIteratorBase<T, T>
+class FilterAsyncIterator<TDest> extends AsyncIteratorBase<TDest> {
+  _iterable: FilterAsyncIterable<TDest>
+  _innerAsyncIterator: AsyncIteratorBase<TDest>
   _maxItems: number
   _nextIndex = 0
 
-  constructor(iterable: FilterAsyncIterable<T>) {
+  constructor(iterable: FilterAsyncIterable<TDest>) {
     super()
     this._iterable = iterable
+    // $FlowIgnore
     this._innerAsyncIterator = this._iterable._innerAsyncIterable[Symbol.asyncIterator]()
   }
 
-  async next(): Promise<{ done: false, value: T } | { done: true }> {
-    let item: { done: false, value: T } | { done: true } = { done: true }
+  async next(): Promise<{ done: false, value: TDest } | { done: true }> {
+    let item: { done: false, value: TDest } | { done: true } = { done: true }
     while (true) {
       item = await this._innerAsyncIterator.next()
       if (item.done === true)
@@ -262,7 +295,7 @@ class FilterAsyncIterator<T> extends AsyncIteratorBase<T, T> {
 
 /***************************************/
 
-export class StreamIterable<T, T> extends AsyncIterableBase<T, T> {
+export class StreamIterable<TDest> extends AsyncIterableBase<TDest> {
   _streamFactory: () => stream$Stream
   _queueConfig: Object
 
@@ -272,13 +305,14 @@ export class StreamIterable<T, T> extends AsyncIterableBase<T, T> {
     this._queueConfig = queueConfig
   }
 
+  // $FlowIgnore
   [Symbol.asyncIterator]() {
     return new StreamIterator(this._streamFactory(), this._queueConfig)
   }
 }
 
-class StreamIterator<T> extends AsyncIteratorBase<T, T> {
-  _queue: Queue<T>
+class StreamIterator<TDest> extends AsyncIteratorBase<TDest> {
+  _queue: Queue<TDest>
   _stream: stream$Stream
 
   constructor(streamFactory: () => stream$Stream, queueConfig: Object = { maxSize: 10000 }) {
@@ -287,7 +321,7 @@ class StreamIterator<T> extends AsyncIteratorBase<T, T> {
     this._stream = streamFactory()
     
     //let stat = startStat('steram item')
-    this._stream.on('data', async (item: T) => {
+    this._stream.on('data', async (item: TDest) => {
       try {
         this._stream.pause()
         await this._queue.push(item)
@@ -295,8 +329,9 @@ class StreamIterator<T> extends AsyncIteratorBase<T, T> {
         //stat.inc()
       } catch (err) {
         let errMsg = `Error during handling StreamIterator stream data`
-        console.error(errMsg, err) 
-        this._queue.push(new IterationError(`${errMsg}: ${err.toString()}`))
+        console.error(errMsg, err)
+        let errToken: TDest = ((new IterationError(`${errMsg}: ${err.toString()}`): any): TDest)
+        this._queue.push(errToken)
       }
     })
     this._stream.on('end', () => {
@@ -318,13 +353,13 @@ class StreamIterator<T> extends AsyncIteratorBase<T, T> {
     })
   }
 
-  async next(): Promise<{ done: false, value: T } | { done: true }> {
-    let value = await this._queue.pop()
-
-    if (value instanceof IterationError) {
-      throw value.errorObj instanceof Error ? value.errorObj : new Error(value.errorObj)
+  async next(): Promise<{ done: false, value: TDest } | { done: true }> {
+    let value: TDest = await this._queue.pop()
+    let castVal = (value: any)
+    if (castVal instanceof IterationError) {
+      throw castVal.errorObj instanceof Error ? castVal.errorObj : new Error(castVal.errorObj)
     }
-    if (value === Queue.empty) {
+    if (castVal === Queue.empty) {
       return { done: true }
     }
     return { value: value, done: false }

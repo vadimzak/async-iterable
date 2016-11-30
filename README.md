@@ -1,4 +1,4 @@
-## threadpool.js
+## threadpool.js [![Build Status](https://travis-ci.org/vadimzak/async-iterable.svg?branch=master)](https://travis-ci.org/vadimzak/async-iterable) [![npm version](https://badge.fury.io/js/async-iterable.svg)](http://badge.fury.io/js/async-iterable)
 
 __An iterator abstraction for async operations__
 

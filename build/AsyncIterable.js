@@ -7,6 +7,8 @@ exports.StreamIterable = exports.AsyncIteratorBase = exports.AsyncIterableBase =
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+require('babel-polyfill');
+
 var _Queue = require('./Queue');
 
 var _Queue2 = _interopRequireDefault(_Queue);
@@ -22,6 +24,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/***************************************/
 
 /***************************************/
 
@@ -128,6 +132,9 @@ var AsyncIterableBase = exports.AsyncIterableBase = function () {
     value: function take(maxItems) {
       return new TakeAsyncIterable(this, maxItems);
     }
+
+    // $FlowIgnore
+
   }, {
     key: Symbol.asyncIterator,
     value: function value() {
@@ -207,13 +214,20 @@ var AsyncIterable = function (_AsyncIterableBase) {
 
   _createClass(AsyncIterable, [{
     key: Symbol.asyncIterator,
+
+
+    // $FlowIgnore
     value: function value() {
-      if (typeof this._innerIterable === 'function') return new StreamIterator(this._innerIterable);
+      if (typeof this._innerIterable === 'function') {
+        var streamFactory = this._innerIterable;
+        return new StreamIterator(streamFactory);
+      }
       return this._queueSize ? new QueuedAsyncIterator(this) : new AsyncIterator(this);
     }
   }, {
     key: 'size',
     get: function get() {
+      // $FlowIgnore
       return typeof this._innerIterable.length === 'undefined' ? this._innerIterable.size : this._innerIterable.length; // if _innerIterable is not a list, undefined will be returned
     }
   }]);
@@ -269,85 +283,86 @@ var QueuedAsyncIterator = function (_AsyncIteratorBase) {
       }, _callee5, _this4);
     }));
     _this3._start = _asyncToGenerator(regeneratorRuntime.mark(function _callee6() {
-      var _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, _value2;
+      var iterable, _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, _value2;
 
       return regeneratorRuntime.wrap(function _callee6$(_context6) {
         while (1) {
           switch (_context6.prev = _context6.next) {
             case 0:
               _context6.prev = 0;
+              iterable = _this3._asyncIterable._innerIterable;
               _iteratorNormalCompletion = true;
               _didIteratorError = false;
               _iteratorError = undefined;
-              _context6.prev = 4;
-              _iterator = _this3._asyncIterable._innerIterable[Symbol.iterator]();
+              _context6.prev = 5;
+              _iterator = iterable[Symbol.iterator]();
 
-            case 6:
+            case 7:
               if (_iteratorNormalCompletion = (_step = _iterator.next()).done) {
-                _context6.next = 13;
+                _context6.next = 14;
                 break;
               }
 
               _value2 = _step.value;
-              _context6.next = 10;
+              _context6.next = 11;
               return _this3._queue.push(_value2);
 
-            case 10:
+            case 11:
               _iteratorNormalCompletion = true;
-              _context6.next = 6;
+              _context6.next = 7;
               break;
 
-            case 13:
-              _context6.next = 19;
+            case 14:
+              _context6.next = 20;
               break;
 
-            case 15:
-              _context6.prev = 15;
-              _context6.t0 = _context6['catch'](4);
+            case 16:
+              _context6.prev = 16;
+              _context6.t0 = _context6['catch'](5);
               _didIteratorError = true;
               _iteratorError = _context6.t0;
 
-            case 19:
-              _context6.prev = 19;
+            case 20:
               _context6.prev = 20;
+              _context6.prev = 21;
 
               if (!_iteratorNormalCompletion && _iterator.return) {
                 _iterator.return();
               }
 
-            case 22:
-              _context6.prev = 22;
+            case 23:
+              _context6.prev = 23;
 
               if (!_didIteratorError) {
-                _context6.next = 25;
+                _context6.next = 26;
                 break;
               }
 
               throw _iteratorError;
 
-            case 25:
-              return _context6.finish(22);
-
             case 26:
-              return _context6.finish(19);
+              return _context6.finish(23);
 
             case 27:
+              return _context6.finish(20);
+
+            case 28:
               _this3._queue.close();
-              _context6.next = 33;
+              _context6.next = 34;
               break;
 
-            case 30:
-              _context6.prev = 30;
+            case 31:
+              _context6.prev = 31;
               _context6.t1 = _context6['catch'](0);
 
               console.error('Error during processing QueuedAsyncIterator items', _context6.t1);
 
-            case 33:
+            case 34:
             case 'end':
               return _context6.stop();
           }
         }
-      }, _callee6, _this4, [[0, 30], [4, 15, 19, 27], [20,, 22, 26]]);
+      }, _callee6, _this4, [[0, 31], [5, 16, 20, 28], [21,, 23, 27]]);
     }));
 
     _this3._asyncIterable = asyncIterable;
@@ -396,6 +411,7 @@ var AsyncIterator = function (_AsyncIteratorBase2) {
     }));
 
     _this5._asyncIterable = asyncIterable;
+    // $FlowIgnore
     _this5._innerIterator = _this5._asyncIterable._innerIterable[Symbol.iterator]();
     return _this5;
   }
@@ -417,6 +433,9 @@ var TakeAsyncIterable = function (_AsyncIterableBase2) {
     _this7._maxItems = maxItems;
     return _this7;
   }
+
+  // $FlowIgnore
+
 
   _createClass(TakeAsyncIterable, [{
     key: Symbol.asyncIterator,
@@ -447,6 +466,7 @@ var TakeAsyncIterator = function (_AsyncIteratorBase3) {
     _this8._nextIndex = 0;
 
     _this8._iterable = iterable;
+    // $FlowIgnore
     _this8._innerAsyncIterator = _this8._iterable._innerAsyncIterable[Symbol.asyncIterator]();
     return _this8;
   }
@@ -508,6 +528,9 @@ var MapAsyncIterable = function (_AsyncIterableBase3) {
     return _this9;
   }
 
+  // $FlowIgnore
+
+
   _createClass(MapAsyncIterable, [{
     key: Symbol.asyncIterator,
     value: function value() {
@@ -534,6 +557,7 @@ var MapAsyncIterator = function (_AsyncIteratorBase4) {
     _this10._nextIndex = 0;
 
     _this10._iterable = iterable;
+    // $FlowIgnore
     _this10._innerAsyncIterator = _this10._iterable._innerAsyncIterable[Symbol.asyncIterator]();
     return _this10;
   }
@@ -602,6 +626,9 @@ var FilterAsyncIterable = function (_AsyncIterableBase4) {
     return _this11;
   }
 
+  // $FlowIgnore
+
+
   _createClass(FilterAsyncIterable, [{
     key: Symbol.asyncIterator,
     value: function value() {
@@ -623,6 +650,7 @@ var FilterAsyncIterator = function (_AsyncIteratorBase5) {
     _this12._nextIndex = 0;
 
     _this12._iterable = iterable;
+    // $FlowIgnore
     _this12._innerAsyncIterator = _this12._iterable._innerAsyncIterable[Symbol.asyncIterator]();
     return _this12;
   }
@@ -710,6 +738,9 @@ var StreamIterable = exports.StreamIterable = function (_AsyncIterableBase5) {
     return _this13;
   }
 
+  // $FlowIgnore
+
+
   _createClass(StreamIterable, [{
     key: Symbol.asyncIterator,
     value: function value() {
@@ -738,7 +769,7 @@ var StreamIterator = function (_AsyncIteratorBase6) {
     //let stat = startStat('steram item')
     _this14._stream.on('data', function () {
       var _ref11 = _asyncToGenerator(regeneratorRuntime.mark(function _callee11(item) {
-        var errMsg;
+        var errMsg, errToken;
         return regeneratorRuntime.wrap(function _callee11$(_context11) {
           while (1) {
             switch (_context11.prev = _context11.next) {
@@ -752,7 +783,7 @@ var StreamIterator = function (_AsyncIteratorBase6) {
               case 4:
                 _this14._stream.resume();
                 //stat.inc()
-                _context11.next = 12;
+                _context11.next = 13;
                 break;
 
               case 7:
@@ -761,9 +792,11 @@ var StreamIterator = function (_AsyncIteratorBase6) {
                 errMsg = 'Error during handling StreamIterator stream data';
 
                 console.error(errMsg, _context11.t0);
-                _this14._queue.push(new IterationError(errMsg + ': ' + _context11.t0.toString()));
+                errToken = new IterationError(errMsg + ': ' + _context11.t0.toString());
 
-              case 12:
+                _this14._queue.push(errToken);
+
+              case 13:
               case 'end':
                 return _context11.stop();
             }
@@ -824,7 +857,7 @@ var StreamIterator = function (_AsyncIteratorBase6) {
     key: 'next',
     value: function () {
       var _ref13 = _asyncToGenerator(regeneratorRuntime.mark(function _callee13() {
-        var value;
+        var value, castVal;
         return regeneratorRuntime.wrap(function _callee13$(_context13) {
           while (1) {
             switch (_context13.prev = _context13.next) {
@@ -834,26 +867,27 @@ var StreamIterator = function (_AsyncIteratorBase6) {
 
               case 2:
                 value = _context13.sent;
+                castVal = value;
 
-                if (!(value instanceof IterationError)) {
-                  _context13.next = 5;
+                if (!(castVal instanceof IterationError)) {
+                  _context13.next = 6;
                   break;
                 }
 
-                throw value.errorObj instanceof Error ? value.errorObj : new Error(value.errorObj);
+                throw castVal.errorObj instanceof Error ? castVal.errorObj : new Error(castVal.errorObj);
 
-              case 5:
-                if (!(value === _Queue2.default.empty)) {
-                  _context13.next = 7;
+              case 6:
+                if (!(castVal === _Queue2.default.empty)) {
+                  _context13.next = 8;
                   break;
                 }
 
                 return _context13.abrupt('return', { done: true });
 
-              case 7:
+              case 8:
                 return _context13.abrupt('return', { value: value, done: false });
 
-              case 8:
+              case 9:
               case 'end':
                 return _context13.stop();
             }

@@ -1,4 +1,2 @@
-- Fill README.md
-
-- Add travis ci
-- Add badges
+- add streams example to README.md
+- improve flow-exported types

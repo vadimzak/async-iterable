@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.asyncIterableForEach = exports.sleep = undefined;
 
 var sleep = exports.sleep = function () {
   var _ref = _asyncToGenerator(regeneratorRuntime.mark(function _callee() {
@@ -131,6 +132,8 @@ var asyncIterableForEach = exports.asyncIterableForEach = function () {
     return _ref2.apply(this, arguments);
   };
 }();
+
+require('babel-polyfill');
 
 function _asyncIterator(iterable) { if (typeof Symbol === "function") { if (Symbol.asyncIterator) { var method = iterable[Symbol.asyncIterator]; if (method != null) return method.call(iterable); } if (Symbol.iterator) { return iterable[Symbol.iterator](); } } throw new TypeError("Object is not async iterable"); }
 
